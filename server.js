@@ -12,7 +12,6 @@ app.use(express.static('public'));
 
 // routes
 app.use('/peerjs', peerServer);
-
 app.get('/', (req, res) => {
   res.redirect(`/${uuidV4()}`);
 });
@@ -25,6 +24,10 @@ io.on('connection', (socket) => {
   socket.on('join-room', (roomId, userId) => {
     socket.join(roomId); // 그룹에 입장
     socket.to(roomId).broadcast.emit('user-connected', userId); // 나를 제외한 그룹 전체에 전달
+
+    socket.on('message', (message) => {
+      io.to(roomId).emit('create-message', message);
+    });
   });
 });
 
