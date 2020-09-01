@@ -5,7 +5,7 @@ const myVideo = document.createElement('video');
 const peer = new Peer(undefined, {
   path: '/peerjs',
   host: '/',
-  port: '443',
+  port: '3030',
 });
 // 기본 벙어리 설정
 myVideo.muted = true;
