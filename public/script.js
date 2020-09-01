@@ -1,19 +1,14 @@
 const socket = io('/');
 const videoGrid = document.getElementById('video-grid');
-const errorDiv = document.createElement('div');
-const myVideo = document.createElement('video');
-const peer = new Peer(undefined, {
+const myPeer = new Peer(undefined, {
   path: '/peerjs',
   host: '/',
-  port: '3030',
+  port: '443',
 });
-// 기본 벙어리 설정
-myVideo.muted = true;
-
-// ! 읽기 전용 속성
-// * 카메라, 마이크, 화면 공유와 같이 현재 연결된 미디어 입력 장치에 접근할 수 있는 객체를 반환
 let myVideoStream;
-
+const myVideo = document.createElement('video');
+myVideo.muted = true;
+const peers = {};
 navigator.mediaDevices
   .getUserMedia({
     video: true,
@@ -22,8 +17,7 @@ navigator.mediaDevices
   .then((stream) => {
     myVideoStream = stream;
     addVideoStream(myVideo, stream);
-
-    peer.on('call', (call) => {
+    myPeer.on('call', (call) => {
       call.answer(stream);
       const video = document.createElement('video');
       call.on('stream', (userVideoStream) => {
@@ -34,60 +28,56 @@ navigator.mediaDevices
     socket.on('user-connected', (userId) => {
       connectToNewUser(userId, stream);
     });
-  })
-  .catch((err) => {
-    addNoVideo();
+    // input value
+    let text = $('input');
+    // when press enter send message
+    $('html').keydown(function (e) {
+      if (e.which == 13 && text.val().length !== 0) {
+        socket.emit('message', text.val());
+        text.val('');
+      }
+    });
+    socket.on('createMessage', (message) => {
+      $('ul').append(`<li class="message"><b>user</b><br/>${message}</li>`);
+      scrollToBottom();
+    });
   });
 
-// ! socket
-peer.on('open', (id) => {
+socket.on('user-disconnected', (userId) => {
+  if (peers[userId]) peers[userId].close();
+});
+
+myPeer.on('open', (id) => {
   socket.emit('join-room', ROOM_ID, id);
 });
 
-// ! custom function
-// ? 함수의 위치가 달라졌을 때 왜 작동을 안 하는지 확인
-const connectToNewUser = (userId, stream) => {
-  const call = peer.call(userId, stream);
+function connectToNewUser(userId, stream) {
+  const call = myPeer.call(userId, stream);
   const video = document.createElement('video');
   call.on('stream', (userVideoStream) => {
     addVideoStream(video, userVideoStream);
   });
-};
+  call.on('close', () => {
+    video.remove();
+  });
 
-const addVideoStream = (video, stream) => {
+  peers[userId] = call;
+}
+
+function addVideoStream(video, stream) {
   video.srcObject = stream;
   video.addEventListener('loadedmetadata', () => {
     video.play();
   });
   videoGrid.append(video);
-};
-
-const addNoVideo = () => {
-  const div = document.createElement('div');
-  div.innerText = '캠 없어요';
-  div.style.cssText = 'text-align:center; height: 300px;width: 400px;object-fit: cover; background-color: green';
-  videoGrid.append(div);
-};
+}
 
 const scrollToBottom = () => {
   var d = $('.main__chat_window');
   d.scrollTop(d.prop('scrollHeight'));
 };
 
-let msg = $('input');
-$('html').keydown((e) => {
-  if (e.which == 13 && msg.val().length !== 0) {
-    socket.emit('message', msg.val());
-    msg.val('');
-  }
-});
-
-socket.on('create-message', (message) => {
-  $('.messages').append(`<li class="message"><b>User</b><br/>${message}</li>`);
-});
-
-// Mute button
-const muteToggle = () => {
+const muteUnmute = () => {
   const enabled = myVideoStream.getAudioTracks()[0].enabled;
   if (enabled) {
     myVideoStream.getAudioTracks()[0].enabled = false;
@@ -98,22 +88,8 @@ const muteToggle = () => {
   }
 };
 
-const setUnmuteButton = () => {
-  const html = `   
-        <i class="unmute fas fa-microphone-slash"></i>
-        <span>Unmute</span>
-        `;
-  document.querySelector('.main__mute_button').innerHTML = html;
-};
-const setMuteButton = () => {
-  const html = `   
-        <i class="fas fa-microphone"></i>
-        <span>Mute</span>
-        `;
-  document.querySelector('.main__mute_button').innerHTML = html;
-};
-
 const playStop = () => {
+  console.log('object');
   let enabled = myVideoStream.getVideoTracks()[0].enabled;
   if (enabled) {
     myVideoStream.getVideoTracks()[0].enabled = false;
@@ -124,17 +100,34 @@ const playStop = () => {
   }
 };
 
-const setPlayVideo = () => {
+const setMuteButton = () => {
   const html = `
-        <i class="stop fas fa-video-slash"></i>
-        <span>Play Video</span>
-    `;
-  document.querySelector('.main__video_button').innerHTML = html;
+    <i class="fas fa-microphone"></i>
+    <span>Mute</span>
+  `;
+  document.querySelector('.main__mute_button').innerHTML = html;
 };
+
+const setUnmuteButton = () => {
+  const html = `
+    <i class="unmute fas fa-microphone-slash"></i>
+    <span>Unmute</span>
+  `;
+  document.querySelector('.main__mute_button').innerHTML = html;
+};
+
 const setStopVideo = () => {
   const html = `
-        <i class="fas fa-video"></i>
-        <span>Stop Video</span>
-    `;
+    <i class="fas fa-video"></i>
+    <span>Stop Video</span>
+  `;
+  document.querySelector('.main__video_button').innerHTML = html;
+};
+
+const setPlayVideo = () => {
+  const html = `
+  <i class="stop fas fa-video-slash"></i>
+    <span>Play Video</span>
+  `;
   document.querySelector('.main__video_button').innerHTML = html;
 };
