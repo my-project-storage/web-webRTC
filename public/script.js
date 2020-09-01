@@ -1,11 +1,11 @@
-const socket = io('/');
-const videoGrid = document.getElementById('video-grid');
-const errorDiv = document.createElement('div');
-const myVideo = document.createElement('video');
+const socket = io("/");
+const videoGrid = document.getElementById("video-grid");
+const errorDiv = document.createElement("div");
+const myVideo = document.createElement("video");
 const peer = new Peer(undefined, {
-  path: '/peerjs',
-  host: '/',
-  port: '3030',
+  path: "/peerjs",
+  host: "/",
+  port: "3030",
 });
 
 // 기본 벙어리 설정
@@ -24,40 +24,40 @@ navigator.mediaDevices
     myVideoStream = stream;
     addVideoStream(myVideo, stream);
 
-    peer.on('call', (call) => {
+    peer.on("call", (call) => {
       call.answer(stream);
-      const video = document.createElement('video');
-      call.on('stream', (userVideoStream) => {
+      const video = document.createElement("video");
+      call.on("stream", (userVideoStream) => {
         addVideoStream(video, userVideoStream);
       });
     });
 
-    socket.on('user-connected', (userId) => {
+    socket.on("user-connected", (userId) => {
       connectToNewUser(userId, stream);
     });
   })
   .catch((err) => {
-    errorDiv.innerText = '웹 캠을 찾을 수 없어요!';
+    errorDiv.innerText = "웹 캠을 찾을 수 없어요!";
     videoGrid.append(errorDiv);
   });
 
 // ! socket
-peer.on('open', (id) => {
-  socket.emit('join-room', ROOM_ID, id);
+peer.on("open", (id) => {
+  socket.emit("join-room", ROOM_ID, id);
 });
 
 // ! custom function
 const connectToNewUser = (userId, stream) => {
   const call = peer.call(userId, stream);
-  const video = document.createElement('video');
-  call.on('stream', (userVideoStream) => {
+  const video = document.createElement("video");
+  call.on("stream", (userVideoStream) => {
     addVideoStream(video, userVideoStream);
   });
 };
 
 const addVideoStream = (video, stream) => {
   video.srcObject = stream;
-  video.addEventListener('loadedmetadata', () => {
+  video.addEventListener("loadedmetadata", () => {
     video.play();
   });
   videoGrid.append(video);
